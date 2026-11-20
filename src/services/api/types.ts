@@ -4,6 +4,7 @@
  * 声明 deepseek_web_search / deepseek_read_url 或设置 safety_check.level 为 high 时进入扩展模式。
  */
 
+/** 官方默认模型；自定义供应商在设置里另行指定 */
 export type ChatModel = 'deepseek-flash' | 'deepseek-v4-pro'
 
 // ---------- 响应：内容块 ----------
@@ -173,7 +174,8 @@ export type DeepseekReadUrlTool = {
 }
 
 export type CreateMessageRequest = {
-  model: ChatModel
+  /** 默认使用 ChatModel；自定义供应商可填任意模型名 */
+  model: string
   system: string
   messages: MessageParam[]
   thinking: { type: 'enabled' | 'disabled' }

@@ -15,7 +15,7 @@ export const useApiKeyEditor = () => {
   return { apiKey, editing, setEditing, form, showInput: !apiKey || editing }
 }
 
-type ApiKeyEditor = ReturnType<typeof useApiKeyEditor>
+export type ApiKeyEditor = ReturnType<typeof useApiKeyEditor>
 
 /** API Key：保存后只显示掩码，点编辑按钮才能重新输入 */
 export const ApiKeyField = ({ editor }: { editor: ApiKeyEditor }) => {

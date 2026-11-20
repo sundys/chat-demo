@@ -7,7 +7,7 @@ import {
   IconStopFill16,
   IconThinkOutline14,
 } from '../base/icons.js'
-import { setSearch, setThinking, useSettings } from '../../services/settings.js'
+import { getActiveProvider, setSearch, setThinking, useSettings } from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
 import { sendMessage, stopReply, useChatStore } from '../../services/chat/store.js'
 import {
@@ -53,6 +53,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const search = useSettings((state) => state.search)
+  // 第三方供应商没有 Files API、语音接口与联网搜索，也不支持服务端思考开关
+  const extended = useSettings((state) => state.provider === 'deepseek')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const togglesRef = useRef<HTMLDivElement>(null)
@@ -78,15 +80,23 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     if (files.length === 0 || useChatStore.getState().importingHistory || !ensureApiKey()) {
       return
     }
-    const error = addDraftFiles(sessionId, files, useSettings.getState().apiKey ?? '')
+    if (!extended) {
+      showToast({ key: 'providerNoFiles' })
+      return
+    }
+    const error = addDraftFiles(sessionId, files, getActiveProvider())
     if (error) {
       showToast(error)
     }
   }
   const retryFile = useCallback(
     (id: string) => {
-      if (!useChatStore.getState().importingHistory && ensureApiKey()) {
-        retryDraftAttachment(sessionId, id, useSettings.getState().apiKey ?? '')
+      if (
+        !useChatStore.getState().importingHistory &&
+        ensureApiKey() &&
+        getActiveProvider().extended
+      ) {
+        retryDraftAttachment(sessionId, id, getActiveProvider())
       }
     },
     [sessionId]
@@ -200,26 +210,32 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         </div>
       </div>
       <div className={styles.functionRow}>
-        {/* 深度思考 / 智能搜索开关，tooltip 在按钮上方 */}
+        {/* 深度思考 / 智能搜索开关，tooltip 在按钮上方；第三方供应商不支持这两项 */}
         <div ref={togglesRef} className={styles.toggles}>
-          <Tooltip content={t('deactivatedThinkTooltip')}>
+          <Tooltip
+            content={extended ? t('deactivatedThinkTooltip') : t('providerThinkingUnavailable')}
+          >
             <button
               type="button"
-              className={clsx(styles.toggle, thinking && styles.selected)}
+              className={clsx(styles.toggle, extended && thinking && styles.selected)}
               aria-label={t('thinkingSwitch')}
-              aria-pressed={thinking}
+              aria-pressed={extended && thinking}
+              disabled={!extended}
               onClick={() => setThinking(!thinking)}
             >
               <IconThinkOutline14 />
               <span className={styles.toggleLabel}>{t('thinkingSwitch')}</span>
             </button>
           </Tooltip>
-          <Tooltip content={t('deactivatedSearchTooltip')}>
+          <Tooltip
+            content={extended ? t('deactivatedSearchTooltip') : t('providerSearchUnavailable')}
+          >
             <button
               type="button"
-              className={clsx(styles.toggle, search && styles.selected)}
+              className={clsx(styles.toggle, extended && search && styles.selected)}
               aria-label={t('search')}
-              aria-pressed={search}
+              aria-pressed={extended && search}
+              disabled={!extended}
               onClick={() => setSearch(!search)}
             >
               <IconGlobeLanguageOutline14 />
@@ -230,7 +246,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         <div className={styles.right}>
           <VoiceButton
             status={voice.status}
-            disabled={!voice.available}
+            disabled={!voice.available || !extended}
+            disabledLabel={extended ? undefined : t('providerVoiceUnavailable')}
             seconds={voice.seconds}
             onClick={() => {
               if (
@@ -245,8 +262,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
             size="m"
             tone="primary"
             icon={<IconPaperclipOutline16 />}
-            tooltip={t('uploadFile')}
-            disabled={importingHistory}
+            tooltip={extended ? t('uploadFile') : t('providerNoFiles')}
+            disabled={importingHistory || !extended}
             onClick={() => ensureApiKey() && fileInputRef.current?.click()}
           />
           <input
@@ -285,7 +302,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
           )}
         </div>
       </div>
-      {dragging ? <DragMask /> : null}
+      {dragging && extended ? <DragMask /> : null}
     </div>
   )
 }

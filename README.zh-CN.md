@@ -35,6 +35,25 @@ pnpm build
 - Markdown、代码高亮、KaTeX 公式和 Mermaid 图表。
 - 简体中文与英文、浅色与深色主题、移动端布局、位置设置、历史导入导出。
 
+## 模型供应商
+
+设置 → 模型供应商提供两种选择：
+
+- **DeepSeek 官方**（默认）：使用内置的 `https://api.deepseek.com` 接口，只需填写 API Key，全部功能可用。
+- **自定义（第三方）**：填写 API 地址、API Key、接口协议与模型名称，可选 Anthropic 兼容（`/v1/messages`）或 OpenAI 兼容（`/v1/chat/completions`）。地址可带 `/v1`，也可直接填到端点；未写版本段时自动补 `/v1`。配置会先用模型列表接口校验，供应商没有该接口时仍可保存。
+
+第三方接口由浏览器直接请求，因此必须允许跨域（CORS）。这些接口不支持 DeepSeek 专有能力：附件上传、语音输入、朗读、联网搜索、链接阅读、服务端标题与深度思考开关；会话标题取首条提问。供应商以 `reasoning_content` 或 `reasoning` 下发思考时，仍会按思考内容展示。
+
+第三方 Anthropic 兼容接口先用 `Authorization: Bearer` 请求；服务端拒绝（401/403，或要求 `anthropic-version`）时自动改用 `x-api-key`、再退到原生 Anthropic 头重试，并在本次会话内记住可用的方式。只有 `*.anthropic.com` 会直接用原生头。
+
+供应商没有 CORS 响应头时，可让开发服务器代为转发。带代理目标启动 `pnpm dev`：
+
+```sh
+DEV_PROXY_TARGET=http://192.168.1.10:3065 pnpm dev
+```
+
+然后把自定义供应商的 API 地址填成 `http://localhost:8090/proxy/v1`。该代理只存在于开发服务器；静态构建版本仍需接口本身支持 CORS，或自建网关。
+
 ## 数据
 
 API Key 和设置保存在浏览器 localStorage，会话及附件原件保存在 IndexedDB，本地数据按浏览器用户配置和站点源（origin）隔离。发送对话、上传附件和使用语音功能时，相应内容会提交给配置的 API 服务。
@@ -53,9 +72,9 @@ API Key 和设置保存在浏览器 localStorage，会话及附件原件保存�
 | `pnpm lint`   | oxlint 检查         |
 | `pnpm format` | oxfmt 格式化        |
 
-[rspack.config.ts](rspack.config.ts) 默认连接 `https://api.deepseek.com`。`createConfig({ apiOrigin, devServer })` 支持自定义 API 地址和开发服务器代理。
+[rspack.config.ts](rspack.config.ts) 默认连接 `https://api.deepseek.com`。`createConfig({ apiOrigin, devServer })` 支持自定义 API 地址和开发服务器代理；这决定「DeepSeek 官方」的地址，第三方地址在设置中填写。
 
-聊天默认使用 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API 通信；语音使用 ASR / TTS 接口。请求使用搜索、链接阅读、标题和 `latest_reminder` 等扩展，接入服务需支持相应能力。附件实际支持的格式以服务端校验为准。
+聊天默认使用 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API 通信；语音使用 ASR / TTS 接口。请求使用搜索、链接阅读、标题和 `latest_reminder` 等扩展，接入服务需支持相应能力。附件实际支持的格式以服务端校验为准。第三方供应商的请求会去掉这些扩展字段，并按所选协议转换请求与流式响应。
 
 ```text
 src/

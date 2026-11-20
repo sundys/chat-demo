@@ -7,6 +7,11 @@ import { rspack, type Configuration } from '@rspack/core'
 const dev = process.env.NODE_ENV !== 'production'
 const targets = ['chrome >= 105', 'edge >= 105', 'safari >= 16', 'firefox >= 110']
 const root = path.dirname(fileURLToPath(import.meta.url))
+/**
+ * 联调不支持跨域的第三方接口：设置 DEV_PROXY_TARGET 后，
+ * 开发服务器把同源的 /proxy/* 转发到该地址，把 /proxy 作为自定义供应商的 API 地址即可。
+ */
+const devProxyTarget = process.env.DEV_PROXY_TARGET?.trim()
 const { version } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8')
 ) as { version: string }
@@ -86,7 +91,22 @@ export const createConfig = ({
     }),
   ],
   performance: { hints: false },
-  devServer: { port: 8090, ...devServer },
+  devServer: {
+    port: 8090,
+    ...(devProxyTarget
+      ? {
+          proxy: [
+            {
+              context: ['/proxy'],
+              target: devProxyTarget,
+              changeOrigin: true,
+              pathRewrite: { '^/proxy': '' },
+            },
+          ],
+        }
+      : {}),
+    ...devServer,
+  },
 })
 
 // eslint-disable-next-line import/no-default-export

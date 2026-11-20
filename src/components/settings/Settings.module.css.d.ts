@@ -27,6 +27,14 @@ declare const styles: {
   readonly "apiKeyMask": string;
   readonly "divider": string;
   readonly "confirm": string;
+  readonly "providerForm": string;
+  readonly "field": string;
+  readonly "fieldLabel": string;
+  readonly "fieldControl": string;
+  readonly "fieldInput": string;
+  readonly "fieldAction": string;
+  readonly "providerSave": string;
+  readonly "providerSuccess": string;
   readonly "cellButton": string;
   readonly "mobileConfirm": string;
   readonly "importConfirm": string;

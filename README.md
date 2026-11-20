@@ -35,6 +35,25 @@ The output is written to `dist/`. Deploy it to a static web server or open `dist
 - Markdown, syntax highlighting, KaTeX math, and Mermaid diagrams.
 - Simplified Chinese and English, light and dark themes, mobile layouts, location settings, and chat history import and export.
 
+## Model providers
+
+Settings → Model provider offers two choices:
+
+- **DeepSeek official** (default): uses the built-in `https://api.deepseek.com` endpoints and only needs an API key. All features are available.
+- **Custom (third-party)**: enter an API base URL, API key, protocol, and model name. Both Anthropic-compatible (`/v1/messages`) and OpenAI-compatible (`/v1/chat/completions`) endpoints are supported. The base URL may include `/v1` or point directly at the endpoint; `/v1` is appended when no version segment is present. The configuration is verified against the model list endpoint first, and is still saved when the provider has no such endpoint.
+
+Custom providers are called directly from the browser, so the endpoint must allow cross-origin requests (CORS). DeepSeek-only capabilities are unavailable there: file uploads, voice input, read-aloud, web search, link reading, server-side titles, and the DeepThink switch. The chat title comes from the first prompt. Reasoning streamed as `reasoning_content` or `reasoning` is still shown as thinking content.
+
+A custom Anthropic-compatible endpoint is tried with `Authorization: Bearer` first. If the server rejects the credentials (401/403, or asks for `anthropic-version`), the request is retried automatically with `x-api-key` and then with native Anthropic headers, and the working mode is remembered for the rest of the session. Only `*.anthropic.com` starts directly with native headers.
+
+For a provider without CORS headers, the development server can proxy it. Start `pnpm dev` with a proxy target and use the same-origin URL:
+
+```sh
+DEV_PROXY_TARGET=http://192.168.1.10:3065 pnpm dev
+```
+
+Then set the custom provider base URL to `http://localhost:8090/proxy/v1`. The proxy exists only in the dev server; the static build still needs a CORS-enabled endpoint or your own gateway.
+
 ## Data and storage
 
 Your API key and settings are stored in the browser's localStorage. Conversations and original attachments are stored in IndexedDB. Local data is isolated by browser profile and site origin. Sending messages, uploading attachments, and using speech features sends the relevant content to the configured API service.
@@ -53,9 +72,9 @@ Settings → Data → Delete all chats clears all local conversations, original 
 | `pnpm lint`   | Lint with oxlint             |
 | `pnpm format` | Format with oxfmt            |
 
-[rspack.config.ts](rspack.config.ts) uses `https://api.deepseek.com` by default. Use `createConfig({ apiOrigin, devServer })` to customize the API origin and development server proxy.
+[rspack.config.ts](rspack.config.ts) uses `https://api.deepseek.com` by default. Use `createConfig({ apiOrigin, devServer })` to customize the API origin and development server proxy. This origin is used by the DeepSeek official provider; third-party endpoints are configured in Settings.
 
-Chat uses `deepseek-flash` by default through Anthropic-compatible Messages / Files APIs. Speech features use ASR / TTS endpoints. Requests include extensions for search, link reading, titles, and `latest_reminder`, so the configured service must support the corresponding capabilities. Supported attachment formats are determined by server-side validation.
+Chat uses `deepseek-flash` by default through Anthropic-compatible Messages / Files APIs. Speech features use ASR / TTS endpoints. Requests include extensions for search, link reading, titles, and `latest_reminder`, so the configured service must support the corresponding capabilities. Supported attachment formats are determined by server-side validation. Requests to a custom provider drop those extension fields and are converted to the selected protocol.
 
 ```text
 src/
